@@ -1,0 +1,81 @@
+#-*- coding:utf-8 -*-
+from __future__ import unicode_literals, print_function, division, absolute_import
+import smtplib
+import datetime
+import pytz
+import time
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.header import Header
+from email.utils import formataddr
+from email.mime.application import MIMEApplication
+import threading
+import winreg
+import os
+
+
+
+#时间
+pytz_ = datetime.datetime.fromtimestamp(int(time.time()) - ****, pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M:%S')
+print(pytz_)
+
+#超时输入，输入事件描述在标题上显示，超时则显示默认的描述“无。”。
+def input_func( context ):
+    context[ 'message' ] = input( '事件:' )
+context = { 'message' : '无。' }
+t = threading.Thread( target = input_func ,args = ( context , ) )
+t.start( )
+t.join( 15 )#等待60秒
+print( context['message'])
+
+input=context['message']
+
+
+# 接收邮箱列表
+recv_addr=("")#收件人
+recv=recv_addr.split(",")
+print(recv)
+for i in range(len(recv)):
+    print("收件人：%s"%recv[i])
+    #m = MIMEMultipart('hello', 'plain', 'utf-8')
+
+    #标题显示发件人
+    m = MIMEMultipart()
+    m['From'] = formataddr(['***',mail_user])
+    m['to'] = formataddr(["***", recv[i]])
+
+    #当日日期
+    today_date = datetime.datetime.today().strftime("%Y%m%d")
+
+    #标题
+    #subject = '%s 激活' % (pytz_.split(' ')[0])
+    subject='工作周报%s'%today_date
+    m['Subject'] = Header(subject, 'utf-8')
+    m.attach(MIMEText('：%s'%input, 'plain', 'utf-8')
+
+    #系统当前用户的桌面的路径
+    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,r'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders')  # 利用系统的链表
+    user_dir = winreg.QueryValueEx(key, "Desktop")[0]  # 返回的是Unicode类型数据
+    Desktop_path = str(user_dir)  # Unicode转化为str
+    # print(Desktop_path)
+
+    # 添加docx文件
+    try:
+        att1 = MIMEApplication(open(Desktop_path + '\工作周报' + today_date + '.docx', 'rb').read())
+        att1["Content-Type"] = 'application/octet-stream'
+        att1.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', '工作周报'+today_date+'.docx' ))
+        m.attach(att1)
+    except:
+        print("文件不存在")
+        time.sleep(1)
+        break
+    smtpObj = smtplib.SMTP()
+    smtpObj.connect(mail_host, 25)
+    smtpObj.login(mail_user, mail_pass)
+    try:
+        smtpObj.sendmail('', recv[i], m.as_string())
+        time.sleep(1)  # 运行间隔5秒
+        smtpObj.quit()  # 退出登陆状态
+        print("已发送。")
+    except smtplib.SMTPException as e:
+        print("发送失败，失败原因：", e)
